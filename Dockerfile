@@ -29,4 +29,4 @@ EXPOSE 5000
 WORKDIR /app/03_CODE
 
 # Khởi chạy ứng dụng
-CMD ["python", "app.py"]
+CMD ["python", "app_cloud.py"]
