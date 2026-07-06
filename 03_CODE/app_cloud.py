@@ -315,11 +315,16 @@ def start_mqtt():
 
 def publish_command(actuator, state):
     if not mqtt_client or not mqtt_status["connected"]:
-        return False
+        return {"ok": False, "topic": None, "payload": None, "reason": "MQTT client not connected"}
     topic = f"{MQTT_TOPIC_PREFIX}/{NODE_ID}/cmd/{actuator}"
     payload = json.dumps({"state": "on" if state else "off"})
     result = mqtt_client.publish(topic, payload, qos=1)
-    return result.rc == mqtt.MQTT_ERR_SUCCESS
+    return {
+        "ok": result.rc == mqtt.MQTT_ERR_SUCCESS,
+        "topic": topic,
+        "payload": payload,
+        "reason": None if result.rc == mqtt.MQTT_ERR_SUCCESS else f"publish rc={result.rc}",
+    }
 
 
 def draw_detections(frame, detections):
@@ -367,16 +372,38 @@ def get_status():
 @app.route("/api/control", methods=["POST"])
 def control():
     payload = request.get_json(silent=True) or {}
+    command_results = {}
     with data_lock:
         if "mode" in payload:
             sensor_data["mode"] = payload["mode"]
         if "fan" in payload:
             sensor_data["fan"] = int(payload["fan"])
-            publish_command("fan", bool(payload["fan"]))
+            command_results["fan"] = publish_command("fan", bool(payload["fan"]))
         if "fogger" in payload:
             sensor_data["fogger"] = int(payload["fogger"])
-            publish_command("mist", bool(payload["fogger"]))
-    return jsonify(sensor_data)
+            command_results["fogger"] = publish_command("mist", bool(payload["fogger"]))
+
+        response = dict(sensor_data)
+
+    if any(not result["ok"] for result in command_results.values()):
+        return jsonify(
+            {
+                "ok": False,
+                "message": "MQTT publish failed",
+                "commands": command_results,
+                "data": response,
+                "mqtt": mqtt_status,
+            }
+        ), 503
+
+    return jsonify(
+        {
+            "ok": True,
+            "commands": command_results,
+            "data": response,
+            "mqtt": mqtt_status,
+        }
+    )
 
 
 @app.route("/api/settings", methods=["GET", "POST"])
