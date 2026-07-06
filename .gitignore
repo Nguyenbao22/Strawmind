@@ -6,3 +6,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 04_DATA/disease_snapshots/
+04_DATA/cloud_latest.jpg
+04_DATA/cloud_analyzed.jpg
+04_DATA/test_upload.jpg
