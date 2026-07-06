@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StrawMind - AIoT Mushroom Monitoring Dashboard</title>
+    <meta name="description" content="Hệ thống AIoT giám sát nấm rơm và tự động hóa điều khiển môi trường tích hợp nhận diện bệnh bằng YOLOv8s.">
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #f8faf6; /* Tông nền trắng ấm thảo mộc thanh bình */
+            --panel-bg: rgba(255, 255, 255, 0.98); /* Panel trắng sữa tinh khiết, sạch sẽ */
+            --panel-border: rgba(46, 125, 50, 0.12); /* Đường viền xanh mạ tinh tế */
+            --text-color: #1b2a1c; /* Chữ màu xám than rừng ấm tương phản cao */
+            --text-muted: #556c55; /* Chữ phụ màu lá sage dịu mát */
+            
+            /* Agricultural Fresh Colors & High Contrast Value Colors */
+            --color-primary: #2e7d32; /* Xanh lá nông nghiệp (Forest Green) */
+            --color-temp: #c62828; /* Đỏ đậm tương phản cao cho Nhiệt độ */
+            --color-hum: #0277bd; /* Xanh dương đậm tương phản cao cho Độ ẩm */
+            --color-eco2: #2e7d32; /* Xanh lá đậm tương phản cao cho khí eCO2 */
+            --color-success: #2e7d32; /* Xanh lá khỏe mạnh */
+            --color-warning: #f57c00; /* Cam ấm cảnh báo */
+            --color-danger: #d32f2f; /* Đỏ đậm nguy hiểm */
+            
+            /* Soft Nature Glows */
+            --glow-temp: 0 4px 12px rgba(198, 40, 40, 0.06);
+            --glow-hum: 0 4px 12px rgba(2, 119, 189, 0.06);
+            --glow-eco2: 0 4px 12px rgba(46, 125, 50, 0.06);
+            --glow-primary: 0 4px 12px rgba(46, 125, 50, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 5% 5%, rgba(46, 125, 50, 0.05) 0%, transparent 35%),
+                radial-gradient(circle at 95% 95%, rgba(129, 199, 132, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(245, 124, 0, 0.01) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-color);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(46, 125, 50, 0.03);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .logo i {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--color-primary), #81c784);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 4px rgba(46, 125, 50, 0.1));
+        }
+
+        .logo h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #1b2a1c, var(--color-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo span {
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(46, 125, 50, 0.08);
+            color: var(--color-primary);
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            border: 1px solid rgba(46, 125, 50, 0.15);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .status-badge {
+            background: #ffffff;
+            border: 1px solid var(--panel-border);
+            border-radius: 30px;
+            padding: 0.45rem 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-color);
+            box-shadow: 0 2px 6px rgba(46, 125, 50, 0.02);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .status-dot.active {
+            background-color: var(--color-success);
+            color: var(--color-success);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .status-dot.simulation {
+            background-color: var(--color-warning);
+            color: var(--color-warning);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .status-dot.inactive {
+            background-color: var(--color-danger);
+            color: var(--color-danger);
+        }
+
+        .btn-settings-trigger {
+            background: #ffffff;
+            border: 1px solid rgba(46, 125, 50, 0.15);
+            color: var(--color-primary);
+            padding: 0.6rem;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(46, 125, 50, 0.03);
+        }
+
+        .btn-settings-trigger:hover {
+            border-color: var(--color-primary);
+            background: #e8f5e9;
+            box-shadow: var(--glow-primary);
+            transform: rotate(45deg);
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: 1.25fr 0.75fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 30px rgba(46, 125, 50, 0.03);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            box-shadow: 0 12px 40px rgba(46, 125, 50, 0.06);
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            border-bottom: 1px solid rgba(46, 125, 50, 0.08);
+            padding-bottom: 0.8rem;
+            color: var(--text-color);
+        }
+
+        .panel-title i {
+            color: var(--color-primary);
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .video-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            background-color: #0c100d;
+            border: 1px solid rgba(46, 125, 50, 0.1);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-feed-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(46, 125, 50, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-color);
+        }
+
+        .camera-overlay span.live {
+            color: #d32f2f;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .camera-overlay span.live::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #d32f2f;
+            border-radius: 50%;
+            animation: pulse 1s infinite alternate;
+        }
+
+        /* Metric Cards - High Contrast Enhancements */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-card {
+            border-radius: 16px;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            height: 140px;
+            border: 1px solid transparent;
+            box-shadow: 0 4px 10px rgba(46, 125, 50, 0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
+
+        .metric-card.temp {
+            background: #fff3f3; /* Hồng pastel ấm dịu mắt */
+            border-color: #ffcdd2;
+        }
+        .metric-card.temp::before { background: var(--color-temp); }
+        .metric-card.temp .metric-value { color: var(--color-temp); }
+        .metric-card.temp .metric-unit { color: #d32f2f; }
+        .metric-card.temp .metric-footer { color: #b71c1c; opacity: 0.85; }
+        .metric-card.temp:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(198, 40, 40, 0.08);
+        }
+
+        .metric-card.hum {
+            background: #eef9ff; /* Xanh da trời pastel dịu mát */
+            border-color: #b3e5fc;
+        }
+        .metric-card.hum::before { background: var(--color-hum); }
+        .metric-card.hum .metric-value { color: var(--color-hum); }
+        .metric-card.hum .metric-unit { color: #0277bd; }
+        .metric-card.hum .metric-footer { color: #01579b; opacity: 0.85; }
+        .metric-card.hum:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(2, 119, 189, 0.08);
+        }
+
+        .metric-card.eco2 {
+            background: #f1fcf0; /* Xanh lá nấm mọc mầm thanh khiết */
+            border-color: #c8e6c9;
+        }
+        .metric-card.eco2::before { background: var(--color-eco2); }
+        .metric-card.eco2 .metric-value { color: var(--color-eco2); }
+        .metric-card.eco2 .metric-unit { color: #2e7d32; }
+        .metric-card.eco2 .metric-footer { color: #1b5e20; opacity: 0.85; }
+        .metric-card.eco2:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(46, 125, 50, 0.08);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .metric-header i {
+            font-size: 1.1rem;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0.5rem 0 0.2rem 0;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: baseline;
+        }
+
+        .metric-unit {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-left: 0.2rem;
+        }
+
+        .metric-footer {
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Segmented Control for Mode - Leafy Theme */
+        .mode-selector {
+            background: #e8ede8;
+            border: 1px solid rgba(46, 125, 50, 0.1);
+            padding: 0.3rem;
+            border-radius: 12px;
+            display: flex;
+            position: relative;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.7rem 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .mode-btn.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, var(--color-primary), #4caf50);
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.25);
+        }
+
+        /* Actuator Toggles - Natural Bright Cards */
+        .toggles-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        .toggle-card {
+            background: #f4f8f4;
+            border: 1px solid rgba(46, 125, 50, 0.12);
+            border-radius: 16px;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-start;
+            height: 120px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(46, 125, 50, 0.02);
+        }
+
+        .toggle-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(46, 125, 50, 0.25);
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.06);
+        }
+
+        .toggle-card.active-state {
+            border-color: rgba(46, 125, 50, 0.35);
+            background: linear-gradient(145deg, #e8f5e9, #f4fcf4);
+        }
+
+        .toggle-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .toggle-label {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle-label i {
+            color: var(--text-muted);
+        }
+
+        .toggle-card.active-state .toggle-label i.fa-fan {
+            animation: spin 2s linear infinite;
+            color: var(--color-hum);
+        }
+
+        .toggle-card.active-state .toggle-label i.fa-cloud-rain {
+            color: var(--color-primary);
+            animation: bounce-small 1.5s infinite alternate;
+        }
+
+        .toggle-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .toggle-card.disabled-style {
+            opacity: 0.65;
+        }
+
+        /* Custom Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            align-self: flex-end;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 34px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .slider::before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #ffffff;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        input:checked + .slider {
+            background-image: linear-gradient(135deg, var(--color-primary), #4caf50);
+        }
+
+        input:checked + .slider::before {
+            transform: translateX(22px);
+        }
+
+        input:disabled + .slider {
+            cursor: not-allowed;
+            background-color: #e2e8f0;
+        }
+
+        .auto-lock-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: rgba(46, 125, 50, 0.08);
+            color: var(--color-primary);
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            border: 1px solid rgba(46, 125, 50, 0.15);
+            display: none;
+            align-self: flex-end;
+        }
+
+        /* Unified Modal Styles using .open */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(27, 38, 27, 0.45); /* Nền tối mờ ngả màu lá cây dịu nhẹ */
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.open {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: #ffffff;
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 460px;
+            box-shadow: 0 20px 50px rgba(46, 125, 50, 0.08);
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal.open .modal-content {
+            transform: scale(1);
+        }
+
+        #disease-log-modal .modal-content {
+            max-width: 680px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-color: rgba(229, 115, 115, 0.25);
+        }
+
+        .modal-header {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid rgba(46, 125, 50, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .modal-close {
+            background: rgba(0, 0, 0, 0.04);
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(211, 47, 47, 0.1);
+            color: #d32f2f;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        /* Settings Form Styles - Clean & Bright */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .form-group input {
+            background: #f7faf7;
+            border: 1px solid rgba(46, 125, 50, 0.2);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            border-color: var(--color-primary);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+
+        .btn-save-settings {
+            background: linear-gradient(135deg, var(--color-primary), #4caf50);
+            border: none;
+            color: #ffffff;
+            padding: 0.8rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--glow-primary);
+            transition: transform 0.2s, opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-save-settings:active {
+            transform: scale(0.98);
+        }
+
+        .btn-save-settings:hover {
+            opacity: 0.95;
+        }
+
+        /* Success Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(46, 125, 50, 0.95);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(46, 125, 50, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            z-index: 1000;
+            transform: translateY(150%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255,255,255,0.2);
+            font-weight: 600;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        /* Keyframes */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 4px currentColor; opacity: 0.8; }
+            50% { box-shadow: 0 0 14px currentColor; opacity: 1; }
+            100% { box-shadow: 0 0 4px currentColor; opacity: 0.8; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.3); opacity: 1; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce-small {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-4px); }
+        }
+
+        /* Info Section */
+        .info-panel {
+            margin-top: 1.5rem;
+            background: #f4f8f4;
+            border: 1px solid rgba(46, 125, 50, 0.12);
+            border-radius: 16px;
+            padding: 1rem;
+        }
+
+        .info-panel h4 {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-weight: 700;
+        }
+
+        .info-panel p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--panel-border);
+            margin-top: 4rem;
+            font-weight: 500;
+        }
+
+        /* Warning Alert Banner */
+        .alert-banner {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.9) 0%, rgba(211, 47, 47, 0.95) 100%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 2px solid var(--color-danger);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2);
+            color: #ffffff;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            position: relative;
+            z-index: 99;
+            animation: slide-down 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .alert-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+        }
+
+        .alert-content i {
+            font-size: 1.3rem;
+            color: #ffffff;
+        }
+
+        /* Video stats overlay */
+        .stats-overlay {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.6rem;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: 1px solid rgba(46, 125, 50, 0.15);
+            color: var(--text-color);
+        }
+
+        .badge-healthy {
+            color: var(--color-success);
+            border-color: rgba(46, 125, 50, 0.25);
+            box-shadow: 0 2px 6px rgba(46, 125, 50, 0.05);
+        }
+
+        .badge-affected {
+            color: var(--color-danger);
+            border-color: rgba(239, 68, 68, 0.25);
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.05);
+        }
+
+        .badge-affected.blink {
+            animation: pulse-border 1s infinite alternate;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: rgba(239, 68, 68, 0.25); box-shadow: 0 0 5px rgba(239, 68, 68, 0.1); }
+            100% { border-color: rgba(239, 68, 68, 0.8); box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); background-color: rgba(239, 68, 68, 0.1); }
+        }
+
+        @keyframes slide-down {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        /* View Toggle Styling (Segmented control) */
+        .view-toggle-container {
+            display: inline-flex;
+            background: #e8ede8;
+            padding: 4px;
+            border-radius: 30px;
+            border: 1px solid rgba(46, 125, 50, 0.1);
+        }
+
+        .btn-toggle-view {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.5rem 1.2rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .btn-toggle-view.active {
+            background: var(--color-primary);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.2);
+        }
+
+        /* Disease Log Panel Styling */
+        .disease-log-card {
+            background: #ffffff;
+            border: 1px solid rgba(229, 115, 115, 0.2);
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(46, 125, 50, 0.01);
+        }
+
+        .disease-log-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(229, 115, 115, 0.45);
+            box-shadow: 0 4px 12px rgba(229, 115, 115, 0.08);
+            background: #fffafa;
+        }
+
+        .disease-log-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .disease-log-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--color-danger);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .disease-log-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .btn-view-log-detail {
+            background: rgba(46, 125, 50, 0.1);
+            color: var(--color-primary);
+            border: none;
+            padding: 0.45rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-view-log-detail:hover {
+            background: var(--color-primary);
+            color: #ffffff;
+        }
+
+        .modal-img-container {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(46, 125, 50, 0.12);
+            margin-bottom: 1.2rem;
+            aspect-ratio: 4 / 3;
+            background: #020305;
+        }
+
+        .modal-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .modal-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .modal-info-card {
+            background: rgba(46, 125, 50, 0.04);
+            border: 1px solid rgba(46, 125, 50, 0.08);
+            border-radius: 12px;
+            padding: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .modal-info-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .modal-info-value {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-color);
+        }
+
+        .modal-recommendations {
+            background: rgba(229, 115, 115, 0.03);
+            border: 1px solid rgba(229, 115, 115, 0.1);
+            border-radius: 12px;
+            padding: 1rem 1.2rem;
+        }
+
+        .modal-recommendations h4 {
+            color: var(--color-danger);
+            margin-bottom: 0.6rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .modal-recs-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .modal-recs-list li {
+            font-size: 0.85rem;
+            color: #2b3a2c;
+            line-height: 1.5;
+            position: relative;
+            padding-left: 1.2rem;
+            font-weight: 500;
+        }
+
+        .modal-recs-list li::before {
+            content: '\f058';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: var(--color-primary);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-seedling"></i>
+            <div>
+                <h1 id="app-title">StrawMind</h1>
+            </div>
+            <span>AIoT System</span>
+        </div>
+        
+        <div class="status-container">
+            <!-- WROOM Board Connection Status -->
+            <div class="status-badge" id="sensor-status-badge">
+                <span class="status-dot inactive" id="sensor-status-dot"></span>
+                <span id="sensor-status-text">Đang kết nối...</span>
+            </div>
+            
+            <!-- Settings Modal Button -->
+            <button class="btn-settings-trigger" id="btn-open-settings" title="Cấu hình hệ thống">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Warning Alert Banner -->
+    <div id="disease-alert-banner" class="alert-banner" style="display: none;">
+        <div class="alert-content">
+            <i class="fa-solid fa-triangle-exclamation fa-beat"></i>
+            <span><strong>CẢNH BÁO:</strong> Phát hiện nấm rơm bị nhiễm bệnh (Affected Mushroom) trong khu vực nuôi trồng!</span>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <main>
+        <!-- Left Column: Camera and AI Processing -->
+        <section class="glass-panel">
+            <h2 class="panel-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 0.8rem;">
+                <span style="display: flex; align-items: center; gap: 0.6rem;">
+                    <i class="fa-solid fa-video"></i>
+                    Luồng Giám sát AI (YOLOv8n)
+                </span>
+                <div class="view-toggle-container">
+                    <button class="btn-toggle-view active" id="btn-view-realtime">
+                        <i class="fa-solid fa-camera"></i> Trực tiếp
+                    </button>
+                    <button class="btn-toggle-view" id="btn-view-yolo">
+                        <i class="fa-solid fa-robot"></i> AI YOLO
+                    </button>
+                </div>
+            </h2>
+            
+            <div class="video-grid">
+                <!-- 1. Live Camera Feed (Clean, Real-time) -->
+                <div class="video-container">
+                    <img id="video-feed" src="/video_feed" alt="Đang tải camera stream..." class="video-feed-img">
+                    <div class="camera-overlay">
+                        <span class="live" id="camera-live-label">LIVE</span>
+                        <span id="camera-status-text">Camera Live</span>
+                    </div>
+                </div>
+                
+                <!-- 2. AI Analysis Snapshot (Static, Bounding Boxes) -->
+                <div class="video-container">
+                    <img id="ai-feed" src="/analyzed_image" alt="Đang tải kết quả phân tích AI..." class="video-feed-img">
+                    <div class="camera-overlay" style="border-color: rgba(139, 92, 246, 0.3);">
+                        <span class="live" style="color: var(--color-primary);"><i class="fa-solid fa-robot"></i> AI SCAN</span>
+                        <span id="ai-timestamp-text" style="color: var(--text-muted); font-size: 0.75rem;">Đang quét...</span>
+                    </div>
+                    <div class="stats-overlay">
+                        <span class="badge badge-healthy">
+                            <i class="fa-solid fa-circle-check"></i> Khỏe mạnh: <span id="count-healthy">0</span>
+                        </span>
+                        <span class="badge badge-affected" id="badge-affected-container">
+                            <i class="fa-solid fa-circle-exclamation"></i> Bị bệnh: <span id="count-affected">0</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <h4><i class="fa-solid fa-circle-info"></i> Nguyên lý nhận diện bệnh:</h4>
+                <p>
+                    Camera ghi hình trực tiếp từ Raspberry Pi 3. Mô hình YOLOv8s nhận diện thời gian thực và gắn nhãn: 
+                    <span style="color: var(--color-success); font-weight: bold;">Healthy</span> (Nấm rơm khỏe mạnh) và 
+                    <span style="color: var(--color-danger); font-weight: bold;">Affected</span> (Nấm rơm bị nhiễm bệnh, có đốm nâu hoặc thối chân).
+                </p>
+            </div>
+        </section>
+
+        <!-- Right Column: Environmental Stats and Control -->
+        <section style="display: flex; flex-direction: column; gap: 2rem;">
+            
+            <!-- Environmental Cards Panel -->
+            <div class="glass-panel">
+                <h2 class="panel-title">
+                    <i class="fa-solid fa-chart-simple"></i>
+                    Thông số môi trường
+                </h2>
+                
+                <div class="metrics-grid">
+                    <!-- Temperature Card -->
+                    <div class="metric-card temp">
+                        <div class="metric-header">
+                            <span>Nhiệt độ</span>
+                            <i class="fa-solid fa-thermometer-half"></i>
+                        </div>
+                        <div class="metric-value">
+                            <span id="val-temp">--.-</span>
+                            <span class="metric-unit">°C</span>
+                        </div>
+                        <div class="metric-footer">
+                            <i class="fa-solid fa-circle-notch"></i> Ngưỡng tự động: &gt; 32°C
+                        </div>
+                    </div>
+                    
+                    <!-- Humidity Card -->
+                    <div class="metric-card hum">
+                        <div class="metric-header">
+                            <span>Độ ẩm</span>
+                            <i class="fa-solid fa-droplet"></i>
+                        </div>
+                        <div class="metric-value">
+                            <span id="val-hum">--.-</span>
+                            <span class="metric-unit">%</span>
+                        </div>
+                        <div class="metric-footer">
+                            <i class="fa-solid fa-circle-notch"></i> Ngưỡng tự động: &lt; 85%
+                        </div>
+                    </div>
+                    
+                    <!-- AQI/eCO2 Card -->
+                    <div class="metric-card eco2">
+                        <div class="metric-header">
+                            <span>Khí eCO2</span>
+                            <i class="fa-solid fa-wind"></i>
+                        </div>
+                        <div class="metric-value" style="font-size: 1.5rem; margin-top: 0.8rem;">
+                            <span id="val-eco2">---</span>
+                            <span class="metric-unit">ppm</span>
+                        </div>
+                        <div class="metric-footer" id="val-aqi-container">
+                            AQI: <span id="val-aqi" style="font-weight: bold;">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="glass-panel">
+                <h2 class="panel-title">
+                    <i class="fa-solid fa-sliders"></i>
+                    Bảng điều khiển
+                </h2>
+                
+                <div class="control-panel">
+                    <!-- Mode Switcher -->
+                    <div class="mode-selector">
+                        <button class="mode-btn" id="btn-mode-auto">
+                            <i class="fa-solid fa-robot"></i> Tự Động
+                        </button>
+                        <button class="mode-btn" id="btn-mode-manual">
+                            <i class="fa-solid fa-hand-pointer"></i> Thủ Công
+                        </button>
+                    </div>
+                    
+                    <!-- Actuators Toggles -->
+                    <div class="toggles-grid">
+                        <!-- Relay 1: Fan -->
+                        <div class="toggle-card" id="card-fan">
+                            <div class="toggle-info">
+                                <span class="toggle-label"><i class="fa-solid fa-fan"></i> Quạt tản nhiệt</span>
+                                <span class="toggle-desc" id="desc-fan">Giảm nhiệt độ</span>
+                            </div>
+                            <span class="auto-lock-badge" id="badge-fan-auto">Tự động</span>
+                            <label class="switch" id="switch-fan-container">
+                                <input type="checkbox" id="toggle-fan">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Relay 2: Fogger -->
+                        <div class="toggle-card" id="card-fogger">
+                            <div class="toggle-info">
+                                <span class="toggle-label"><i class="fa-solid fa-cloud-rain"></i> Phun sương</span>
+                                <span class="toggle-desc" id="desc-fogger">Tăng độ ẩm</span>
+                            </div>
+                            <span class="auto-lock-badge" id="badge-fogger-auto">Tự động</span>
+                            <label class="switch" id="switch-fogger-container">
+                                <input type="checkbox" id="toggle-fogger">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Disease History Log Panel -->
+            <div class="glass-panel" id="disease-log-panel">
+                <h2 class="panel-title">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    Nhật ký phát hiện bệnh
+                </h2>
+                
+                <div class="log-list" id="disease-log-list" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.8rem; padding-right: 4px;">
+                    <div class="log-empty-state" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                        <i class="fa-solid fa-folder-open" style="font-size: 2rem; margin-bottom: 0.6rem; display: block; opacity: 0.4;"></i>
+                        Chưa ghi nhận bệnh nấm rơm
+                    </div>
+                </div>
+            </div>
+            
+        </section>
+    </main>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-gear"></i> Cấu hình thiết bị</h3>
+                <button class="modal-close" id="btn-close-settings"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="input-cam-ip">Chỉ số Camera Pi (Index):</label>
+                    <input type="text" id="input-cam-ip" placeholder="Ví dụ: 0 (Mặc định)">
+                </div>
+                <div class="form-group">
+                    <label for="input-sensor-ip">Địa chỉ IP ESP32-WROOM:</label>
+                    <input type="text" id="input-sensor-ip" placeholder="Ví dụ: 10.90.118.237">
+                </div>
+                <button class="btn-save-settings" id="btn-save-settings">
+                    <i class="fa-solid fa-circle-check"></i> Lưu cấu hình
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disease Log Detail Modal -->
+    <div class="modal" id="disease-log-modal">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom-color: rgba(229, 115, 115, 0.2);">
+                <h3 style="color: #d32f2f;"><i class="fa-solid fa-triangle-exclamation"></i> Chi tiết cảnh báo bệnh</h3>
+                <button class="modal-close" id="btn-close-disease-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-img-container">
+                    <img id="disease-modal-img" src="" alt="Ảnh phân tích YOLO">
+                </div>
+                
+                <div class="modal-info-grid">
+                    <div class="modal-info-card">
+                        <span class="modal-info-label"><i class="fa-solid fa-clock"></i> Thời gian phát hiện</span>
+                        <span class="modal-info-value" id="disease-modal-time">--</span>
+                    </div>
+                    <div class="modal-info-card" style="border-color: rgba(229, 115, 115, 0.15); background: rgba(229, 115, 115, 0.03);">
+                        <span class="modal-info-label" style="color: #d32f2f;"><i class="fa-solid fa-bug"></i> Số lượng nhiễm bệnh</span>
+                        <span class="modal-info-value" style="color: #d32f2f;" id="disease-modal-count">0 nấm bệnh</span>
+                    </div>
+                    <div class="modal-info-card">
+                        <span class="modal-info-label"><i class="fa-solid fa-thermometer-half"></i> Nhiệt độ lúc đó</span>
+                        <span class="modal-info-value" id="disease-modal-temp">--.- °C</span>
+                    </div>
+                    <div class="modal-info-card">
+                        <span class="modal-info-label"><i class="fa-solid fa-droplet"></i> Độ ẩm lúc đó</span>
+                        <span class="modal-info-value" id="disease-modal-hum">--.- %</span>
+                    </div>
+                </div>
+                
+                <div class="modal-recommendations">
+                    <h4><i class="fa-solid fa-hand-holding-medical"></i> Khuyến nghị & Hướng dẫn điều trị</h4>
+                    <ul class="modal-recs-list" id="disease-modal-recs">
+                        <!-- Dynamic recommendations will be loaded here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast Notification -->
+    <div class="toast" id="success-toast">
+        <i class="fa-solid fa-circle-check" style="font-size: 1.2rem;"></i>
+        <span id="toast-message">Đã lưu cấu hình thành công!</span>
+    </div>
+
+    <footer>
+        <p>StrawMind © 2026 - Giải pháp nông nghiệp thông minh tối ưu hóa năng suất nấm rơm</p>
+    </footer>
+
+    <!-- Frontend logic with vanilla JavaScript -->
+    <script>
+        // Các phần tử DOM
+        const valTemp = document.getElementById('val-temp');
+        const valHum = document.getElementById('val-hum');
+        const valEco2 = document.getElementById('val-eco2');
+        const valAqi = document.getElementById('val-aqi');
+        const valAqiContainer = document.getElementById('val-aqi-container');
+        
+        const btnModeAuto = document.getElementById('btn-mode-auto');
+        const btnModeManual = document.getElementById('btn-mode-manual');
+        
+        const toggleFan = document.getElementById('toggle-fan');
+        const toggleFogger = document.getElementById('toggle-fogger');
+        const cardFan = document.getElementById('card-fan');
+        const cardFogger = document.getElementById('card-fogger');
+        
+        const badgeFanAuto = document.getElementById('badge-fan-auto');
+        const badgeFoggerAuto = document.getElementById('badge-fogger-auto');
+        
+        const sensorStatusDot = document.getElementById('sensor-status-dot');
+        const sensorStatusText = document.getElementById('sensor-status-text');
+        const cameraStatusText = document.getElementById('camera-status-text');
+        
+        const btnOpenSettings = document.getElementById('btn-open-settings');
+        const btnCloseSettings = document.getElementById('btn-close-settings');
+        const settingsModal = document.getElementById('settings-modal');
+        const btnSaveSettings = document.getElementById('btn-save-settings');
+        
+        const inputCamIp = document.getElementById('input-cam-ip');
+        const inputSensorIp = document.getElementById('input-sensor-ip');
+        
+        const successToast = document.getElementById('success-toast');
+        const toastMessage = document.getElementById('toast-message');
+
+        // DOM Các tính năng mới (Camera Toggle, Disease Logs & Modal)
+        const btnViewRealtime = document.getElementById('btn-view-realtime');
+        const btnViewYolo = document.getElementById('btn-view-yolo');
+        const videoGrid = document.querySelector('.video-grid');
+        const videoContainers = document.querySelectorAll('.video-container');
+        
+        const diseaseLogList = document.getElementById('disease-log-list');
+        const diseaseLogModal = document.getElementById('disease-log-modal');
+        const btnCloseDiseaseModal = document.getElementById('btn-close-disease-modal');
+        
+        const diseaseModalImg = document.getElementById('disease-modal-img');
+        const diseaseModalTime = document.getElementById('disease-modal-time');
+        const diseaseModalCount = document.getElementById('disease-modal-count');
+        const diseaseModalTemp = document.getElementById('disease-modal-temp');
+        const diseaseModalHum = document.getElementById('disease-modal-hum');
+        const diseaseModalRecs = document.getElementById('disease-modal-recs');
+
+        let currentSystemMode = "auto";
+        let isSaving = false;
+        let lastAnalysisTime = 0;
+
+        // Hàm phòng vệ định dạng chỉ số cảm biến tránh crash JS khi dữ liệu null/undefined
+        function formatSensorValue(val, unit, fallback = '--.-') {
+            if (val === undefined || val === null) return `${fallback} ${unit}`;
+            const num = parseFloat(val);
+            if (isNaN(num)) return `${val} ${unit}`;
+            return `${num.toFixed(1)} ${unit}`;
+        }
+
+        // Mở / Đóng Modal Cấu hình - Phản hồi lập tức
+        btnOpenSettings.addEventListener('click', () => {
+            // Mở modal ngay lập tức để cải thiện trải nghiệm phản hồi
+            settingsModal.classList.add('open');
+            
+            // Tải cấu hình IP hiện tại từ server
+            fetch('/api/settings')
+                .then(res => {
+                    if (!res.ok) throw new Error("Mất kết nối server");
+                    return res.json();
+                })
+                .then(data => {
+                    inputCamIp.value = data.cam_ip !== undefined ? data.cam_ip : '0';
+                    inputSensorIp.value = data.sensor_ip !== undefined ? data.sensor_ip : '';
+                })
+                .catch(err => {
+                    console.error("Lỗi lấy cấu hình từ server:", err);
+                    // Giữ modal mở để người dùng vẫn có thể điền thông tin mới thủ công
+                });
+        });
+
+        btnCloseSettings.addEventListener('click', () => {
+            settingsModal.classList.remove('open');
+        });
+
+        // Đóng modal khi nhấn ra ngoài
+        window.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.remove('open');
+            }
+        });
+
+        // Lưu Cấu hình
+        btnSaveSettings.addEventListener('click', () => {
+            if (isSaving) return;
+            isSaving = true;
+            btnSaveSettings.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...';
+            
+            const payload = {
+                cam_ip: inputCamIp.value.trim(),
+                sensor_ip: inputSensorIp.value.trim()
+            };
+
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast("Đã cập nhật IP kết nối thành công!");
+                settingsModal.classList.remove('open');
+            })
+            .catch(err => {
+                console.error("Lỗi lưu cấu hình:", err);
+                showToast("Lưu cấu hình thất bại!", true);
+            })
+            .finally(() => {
+                isSaving = false;
+                btnSaveSettings.innerHTML = '<i class="fa-solid fa-circle-check"></i> Lưu cấu hình';
+            });
+        });
+
+        // Hiển thị Toast thông báo
+        function showToast(msg, isError = false) {
+            toastMessage.textContent = msg;
+            if (isError) {
+                successToast.style.background = 'rgba(211, 47, 47, 0.95)';
+                successToast.querySelector('i').className = 'fa-solid fa-circle-xmark';
+            } else {
+                successToast.style.background = 'rgba(46, 125, 50, 0.95)';
+                successToast.querySelector('i').className = 'fa-solid fa-circle-check';
+            }
+            successToast.classList.add('show');
+            setTimeout(() => {
+                successToast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Chuyển đổi Chế độ (Auto / Manual)
+        btnModeAuto.addEventListener('click', () => setMode('auto'));
+        btnModeManual.addEventListener('click', () => setMode('manual'));
+
+        function setMode(mode) {
+            fetch('/api/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: mode })
+            })
+            .then(res => res.json())
+            .then(data => {
+                updateUIElements(data);
+                showToast(`Đã chuyển sang chế độ ${mode === 'auto' ? 'Tự Động' : 'Thủ Công'}`);
+            })
+            .catch(err => console.error("Lỗi đổi chế độ:", err));
+        }
+
+        // Tải trạng thái và điều khiển Quạt / Phun Sương (Thủ công)
+        toggleFan.addEventListener('change', () => {
+            if (currentSystemMode === 'auto') return;
+            sendControlCommand({ fan: toggleFan.checked ? 1 : 0 });
+        });
+
+        toggleFogger.addEventListener('change', () => {
+            if (currentSystemMode === 'auto') return;
+            sendControlCommand({ fogger: toggleFogger.checked ? 1 : 0 });
+        });
+
+        function sendControlCommand(payload) {
+            fetch('/api/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                updateUIElements(data);
+            })
+            .catch(err => console.error("Lỗi điều khiển thiết bị:", err));
+        }
+
+        // Cập nhật giao diện khi nhận dữ liệu từ polling
+        function updateUIElements(data) {
+            // Cập nhật thông số cảm biến
+            valTemp.textContent = data.temp !== undefined ? data.temp.toFixed(1) : '--.-';
+            valHum.textContent = data.hum !== undefined ? data.hum.toFixed(1) : '--.-';
+            valEco2.textContent = data.eco2 !== undefined ? data.eco2 : '---';
+            
+            // Cập nhật AQI (Air Quality Index)
+            if (data.aqi !== undefined) {
+                let aqiText = "Tốt";
+                let aqiColor = "var(--color-eco2)";
+                
+                if (data.aqi === 2) {
+                    aqiText = "Trung bình";
+                    aqiColor = "var(--color-warning)";
+                } else if (data.aqi >= 3) {
+                    aqiText = "Kém";
+                    aqiColor = "var(--color-danger)";
+                }
+                valAqi.textContent = aqiText;
+                valAqi.style.color = aqiColor;
+            } else {
+                valAqi.textContent = '--';
+            }
+
+            // Đồng bộ Chế độ hoạt động
+            currentSystemMode = data.mode;
+            if (currentSystemMode === 'auto') {
+                btnModeAuto.classList.add('active');
+                btnModeManual.classList.remove('active');
+                
+                // Vô hiệu hóa toggle vì đang trong chế độ Auto
+                toggleFan.disabled = true;
+                toggleFogger.disabled = true;
+                
+                badgeFanAuto.style.display = 'block';
+                badgeFoggerAuto.style.display = 'block';
+            } else {
+                btnModeAuto.classList.remove('active');
+                btnModeManual.classList.add('active');
+                
+                // Cho phép điều khiển tay
+                toggleFan.disabled = false;
+                toggleFogger.disabled = false;
+                
+                badgeFanAuto.style.display = 'none';
+                badgeFoggerAuto.style.display = 'none';
+            }
+
+            // Cập nhật trạng thái hiển thị của nút Toggle
+            toggleFan.checked = data.fan === 1;
+            toggleFogger.checked = data.fogger === 1;
+            
+            // Thay đổi màu thẻ tương ứng khi thiết bị hoạt động
+            if (data.fan === 1) {
+                cardFan.classList.add('active-state');
+            } else {
+                cardFan.classList.remove('active-state');
+            }
+
+            if (data.fogger === 1) {
+                cardFogger.classList.add('active-state');
+            } else {
+                cardFogger.classList.remove('active-state');
+            }
+
+            // Cập nhật số lượng nấm và cảnh báo bệnh
+            const countHealthyEl = document.getElementById('count-healthy');
+            const countAffectedEl = document.getElementById('count-affected');
+            const badgeAffectedContainer = document.getElementById('badge-affected-container');
+            const diseaseAlertBanner = document.getElementById('disease-alert-banner');
+            
+            if (data.healthy_count !== undefined) {
+                countHealthyEl.textContent = data.healthy_count;
+            }
+            if (data.affected_count !== undefined) {
+                countAffectedEl.textContent = data.affected_count;
+            }
+            
+            if (data.disease_detected) {
+                diseaseAlertBanner.style.display = 'block';
+                badgeAffectedContainer.classList.add('blink');
+            } else {
+                diseaseAlertBanner.style.display = 'none';
+                badgeAffectedContainer.classList.remove('blink');
+            }
+
+            // Reload AI snapshot if new analysis completed
+            if (data.analysis_time !== undefined && data.analysis_time > lastAnalysisTime) {
+                lastAnalysisTime = data.analysis_time;
+                const aiFeed = document.getElementById('ai-feed');
+                aiFeed.src = `/analyzed_image?t=${data.analysis_time}`;
+                
+                const aiTimestampText = document.getElementById('ai-timestamp-text');
+                const date = new Date(data.analysis_time * 1000);
+                const timeString = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                aiTimestampText.textContent = `Quét lúc: ${timeString}`;
+            }
+
+            // Cập nhật kết nối và hiển thị trạng thái kết nối
+            const statusText = data.status || "";
+            sensorStatusText.textContent = statusText;
+            
+            sensorStatusDot.className = "status-dot";
+            if (statusText === "Đang kết nối") {
+                sensorStatusDot.classList.add('active');
+            } else if (statusText.includes("Giả lập")) {
+                sensorStatusDot.classList.add('simulation');
+            } else {
+                sensorStatusDot.classList.add('inactive');
+            }
+        }
+
+        // Định kỳ lấy dữ liệu cảm biến (1 giây/lần để UI cập nhật mượt mà)
+        function pollSensorData() {
+            fetch('/api/data')
+                .then(res => res.json())
+                .then(data => {
+                    updateUIElements(data);
+                })
+                .catch(err => {
+                    console.error("Lỗi khi kết nối API server:", err);
+                    sensorStatusText.textContent = "Không kết nối được server";
+                    sensorStatusDot.className = "status-dot inactive";
+                });
+        }
+        
+        // Khởi động lấy trạng thái của Camera và Giả lập từ Settings
+        function checkIPConfigurations() {
+            fetch('/api/settings')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.cam_simulation) {
+                        cameraStatusText.textContent = "Camera Pi (Giả lập AI)";
+                        cameraStatusText.style.color = "var(--color-warning)";
+                    } else {
+                        cameraStatusText.textContent = "Camera Pi (Hoạt động)";
+                        cameraStatusText.style.color = "var(--text-color)";
+                    }
+                })
+                .catch(err => console.error("Lỗi cấu hình IP:", err));
+        }
+
+        // 1. Chuyển đổi Chế độ xem (Realtime vs. AI YOLO)
+        function setViewMode(mode) {
+            if (videoContainers.length < 2) return;
+            
+            if (mode === 'realtime') {
+                btnViewRealtime.classList.add('active');
+                btnViewYolo.classList.remove('active');
+                videoContainers[0].style.display = 'block';
+                videoContainers[1].style.display = 'none';
+                videoGrid.style.gridTemplateColumns = '1fr';
+            } else {
+                btnViewRealtime.classList.remove('active');
+                btnViewYolo.classList.add('active');
+                videoContainers[0].style.display = 'none';
+                videoContainers[1].style.display = 'block';
+                videoGrid.style.gridTemplateColumns = '1fr';
+            }
+        }
+        
+        btnViewRealtime.addEventListener('click', () => setViewMode('realtime'));
+        btnViewYolo.addEventListener('click', () => setViewMode('yolo'));
+        
+        // Mặc định ban đầu chỉ hiện Realtime
+        setViewMode('realtime');
+
+        // 2. Nhật ký phát hiện bệnh & Modal Xem chi tiết
+        let localDiseaseLogs = [];
+        
+        function fetchDiseaseLogs() {
+            fetch('/api/disease_logs')
+                .then(res => res.json())
+                .then(logs => {
+                    localDiseaseLogs = logs;
+                    renderDiseaseLogs(logs);
+                })
+                .catch(err => console.error("Lỗi khi tải nhật ký bệnh:", err));
+        }
+        
+        function renderDiseaseLogs(logs) {
+            if (!logs || logs.length === 0) {
+                diseaseLogList.innerHTML = `
+                    <div class="log-empty-state" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                        <i class="fa-solid fa-folder-open" style="font-size: 2rem; margin-bottom: 0.6rem; display: block; opacity: 0.4;"></i>
+                        Chưa ghi nhận bệnh nấm rơm
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            logs.forEach(log => {
+                html += `
+                    <div class="disease-log-card">
+                        <div class="disease-log-info">
+                            <span class="disease-log-title">
+                                <i class="fa-solid fa-circle-exclamation"></i> Phát hiện bệnh (${log.count} nấm)
+                            </span>
+                            <span class="disease-log-time">${log.timestamp}</span>
+                        </div>
+                        <button class="btn-view-log-detail" onclick="openDiseaseDetailModal('${log.id}')">
+                            Chi tiết
+                        </button>
+                    </div>
+                `;
+            });
+            diseaseLogList.innerHTML = html;
+        }
+        
+        // Hàm mở modal chi tiết bệnh
+        window.openDiseaseDetailModal = function(logId) {
+            const log = localDiseaseLogs.find(l => l.id === logId);
+            if (!log) return;
+            
+            // Set thông tin vào modal
+            diseaseModalImg.src = log.image_url;
+            diseaseModalTime.textContent = log.timestamp;
+            diseaseModalCount.textContent = `${log.count} tai nấm bị bệnh`;
+            diseaseModalTemp.textContent = formatSensorValue(log.temp, '°C');
+            diseaseModalHum.textContent = formatSensorValue(log.hum, '%');
+            
+            // Render recommendations
+            let recsHtml = '';
+            log.recommendations.forEach(rec => {
+                recsHtml += `<li>${rec}</li>`;
+            });
+            diseaseModalRecs.innerHTML = recsHtml;
+            
+            // Hiển thị modal
+            diseaseLogModal.classList.add('open');
+        };
+        
+        // Đóng modal chi tiết bệnh
+        btnCloseDiseaseModal.addEventListener('click', () => {
+            diseaseLogModal.classList.remove('open');
+        });
+        
+        // Đóng modal khi bấm ra ngoài vùng nội dung
+        window.addEventListener('click', (e) => {
+            if (e.target === diseaseLogModal) {
+                diseaseLogModal.classList.remove('open');
+            }
+        });
+
+        // Tải nhật ký bệnh ban đầu và định kỳ 5 giây
+        fetchDiseaseLogs();
+        setInterval(fetchDiseaseLogs, 5000);
+
+        // Thực hiện Polling
+        pollSensorData();
+        setInterval(pollSensorData, 1000);
+        
+        // Cập nhật thông tin cấu hình mỗi 3 giây
+        checkIPConfigurations();
+        setInterval(checkIPConfigurations, 3000);
+    </script>
+</body>
+</html>
