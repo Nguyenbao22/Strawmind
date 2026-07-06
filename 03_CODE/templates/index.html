@@ -1507,13 +1507,17 @@
 
         // Tải trạng thái và điều khiển Quạt / Phun Sương (Thủ công)
         toggleFan.addEventListener('change', () => {
-            if (currentSystemMode === 'auto') return;
-            sendControlCommand({ fan: toggleFan.checked ? 1 : 0 });
+            if (currentSystemMode === 'auto') {
+                currentSystemMode = 'manual';
+            }
+            sendControlCommand({ mode: 'manual', fan: toggleFan.checked ? 1 : 0 });
         });
 
         toggleFogger.addEventListener('change', () => {
-            if (currentSystemMode === 'auto') return;
-            sendControlCommand({ fogger: toggleFogger.checked ? 1 : 0 });
+            if (currentSystemMode === 'auto') {
+                currentSystemMode = 'manual';
+            }
+            sendControlCommand({ mode: 'manual', fogger: toggleFogger.checked ? 1 : 0 });
         });
 
         function sendControlCommand(payload) {
