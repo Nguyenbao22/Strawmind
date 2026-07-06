@@ -21,7 +21,8 @@ os.environ["OMP_NUM_THREADS"] = "1"
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
-MODEL_PATH = Path(os.getenv("MODEL_PATH", ROOT_DIR / "02_MODEL" / "yolov8n_best.onnx"))
+DEFAULT_MODEL_PATH = ROOT_DIR / "02_MODEL" / "yolov8n_best.onnx"
+MODEL_PATH = Path(os.getenv("MODEL_PATH", str(DEFAULT_MODEL_PATH)))
 DATA_DIR = ROOT_DIR / "04_DATA"
 SNAPSHOT_DIR = DATA_DIR / "disease_snapshots"
 DISEASE_LOGS_FILE = DATA_DIR / "disease_logs.json"
@@ -139,9 +140,10 @@ model = None
 def load_model():
     global model
     if model is None:
-        if not MODEL_PATH.exists():
+        resolved_model_path = MODEL_PATH if MODEL_PATH.exists() else DEFAULT_MODEL_PATH
+        if not resolved_model_path.exists():
             raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
-        model = YOLOv8ONNX(MODEL_PATH)
+        model = YOLOv8ONNX(resolved_model_path)
     return model
 
 
